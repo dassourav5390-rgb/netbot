@@ -1,0 +1,62 @@
+services:
+  frontend:
+    build:
+      context: ./my-app
+      dockerfile: Dockerfile.dev
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./my-app:/app
+      - /app/node_modules
+      - next_cache:/app/.next
+    environment:
+      - NODE_ENV=development
+      - WATCHPACK_POLLING=true
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://127.0.0.1:8000}
+      - NEXT_PUBLIC_NETBOT_API_KEY=${NETBOT_API_KEY:?Set NETBOT_API_KEY in .env}
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+    environment:
+      - PYTHONDONTWRITEBYTECODE=1
+      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-netbot}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@db:5432/${POSTGRES_DB:-netbot}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY:?Set ENCRYPTION_KEY in .env}
+      - REQUIRE_ENCRYPTION_KEY=true
+      - NETBOT_API_KEY=${NETBOT_API_KEY:?Set NETBOT_API_KEY in .env}
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000}
+      - ALLOW_CONFIG_COMMANDS=${ALLOW_CONFIG_COMMANDS:-false}
+      - ALLOW_SENSITIVE_SHOW_COMMANDS=${ALLOW_SENSITIVE_SHOW_COMMANDS:-false}
+      - ALLOW_PUBLIC_NETWORK_SCAN=${ALLOW_PUBLIC_NETWORK_SCAN:-false}
+      - MAX_SCAN_HOSTS=${MAX_SCAN_HOSTS:-256}
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID:-}
+    command: ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: postgres:16-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-netbot}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      - POSTGRES_DB=${POSTGRES_DB:-netbot}
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U netbot"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  next_cache:
+  pg_data:

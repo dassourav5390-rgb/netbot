@@ -1,0 +1,1 @@
+{"message": "Run each of these commands on the switch and show full raw output: show running-config, show interfaces description, show interfaces switchport gi5, show interfaces switchport gi9, show interfaces counters, show mac address-table, show cdp neighbors, show lldp neighbors, show system, show ntp status, show errdisable detect", "device_id": "switch"}
